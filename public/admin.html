@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - SLD GC Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --apple-blue: #007AFF;
+            --apple-gray: #1C1C1E;
+            --apple-light: #F2F2F7;
+            --apple-dark: #000000;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        .glass {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .apple-btn {
+            background: var(--apple-blue);
+            border-radius: 12px;
+            transition: all 0.2s ease;
+        }
+        
+        .apple-btn:hover { transform: scale(0.98); }
+        
+        .apple-input {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .apple-input:focus {
+            border-color: var(--apple-blue);
+            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
+        }
+        
+        .apple-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .apple-card:hover { transform: translateY(-2px); }
+        
+        .loading { animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .fade-in { animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body class="bg-black text-white min-h-screen">
+    <!-- Auth Section -->
+    <div id="authSection" class="min-h-screen bg-gradient-to-br from-black via-gray-900 to-blue-900 flex items-center justify-center p-4">
+        <div class="glass p-8 rounded-3xl max-w-md w-full fade-in">
+            <div class="text-center mb-8">
+                <div class="w-20 h-20 glass rounded-2xl flex items-center justify-center mx-auto mb-6">
+                    <i class="fas fa-shield-alt text-3xl text-blue-400"></i>
+                </div>
+                <h1 class="text-3xl font-bold mb-2">Admin Portal</h1>
+                <p class="text-gray-400">Secure access required</p>
+            </div>
+            <div class="space-y-4">
+                <button onclick="sendOTP()" class="w-full apple-btn text-white py-3 px-6 font-medium">
+                    <i class="fas fa-paper-plane mr-2"></i>Send OTP
+                </button>
+                <div id="otpSection" class="hidden space-y-4">
+                    <input type="text" id="otpInput" placeholder="Enter 6-digit OTP" class="w-full apple-input text-white p-3">
+                    <button onclick="verifyOTP()" class="w-full apple-btn text-white py-3 px-6 font-medium">
+                        <i class="fas fa-check-circle mr-2"></i>Verify OTP
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dashboard" class="hidden min-h-screen bg-black">
+        <!-- Header -->
+        <header class="glass sticky top-0 z-50 border-b border-gray-800">
+            <div class="max-w-7xl mx-auto px-4 py-4">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-tachometer-alt text-white"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-xl font-bold">Admin Dashboard</h1>
+                            <p class="text-sm text-gray-400">Manage submissions</p>
+                        </div>
+                    </div>
+                    <button onclick="logout()" class="apple-btn bg-red-500 text-white px-4 py-2">
+                        <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto p-4 pb-20">
+            <!-- Stats -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div class="apple-card p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-400 text-sm">Total</p>
+                            <p id="totalCount" class="text-2xl font-bold">0</p>
+                        </div>
+                        <i class="fas fa-file-alt text-blue-400 text-xl"></i>
+                    </div>
+                </div>
+                <div class="apple-card p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-400 text-sm">Pending</p>
+                            <p id="pendingCount" class="text-2xl font-bold text-yellow-400">0</p>
+                        </div>
+                        <i class="fas fa-clock text-yellow-400 text-xl"></i>
+                    </div>
+                </div>
+                <div class="apple-card p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-400 text-sm">Approved</p>
+                            <p id="approvedCount" class="text-2xl font-bold text-green-400">0</p>
+                        </div>
+                        <i class="fas fa-check-circle text-green-400 text-xl"></i>
+                    </div>
+                </div>
+                <div class="apple-card p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-400 text-sm">Paid</p>
+                            <p id="paidCount" class="text-2xl font-bold text-blue-400">0</p>
+                        </div>
+                        <i class="fas fa-money-bill-wave text-blue-400 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submissions -->
+            <div class="glass rounded-2xl overflow-hidden">
+                <div class="p-6 border-b border-gray-800">
+                    <h2 class="text-xl font-bold">Recent Submissions</h2>
+                </div>
+                <div id="submissionsList" class="divide-y divide-gray-800"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Video Modal -->
+    <div id="videoModal" class="fixed inset-0 bg-black bg-opacity-80 hidden flex items-center justify-center p-4 z-50">
+        <div class="glass rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div class="flex justify-between items-center p-4 border-b border-gray-800">
+                <h3 class="text-lg font-bold">Video Proof</h3>
+                <button onclick="closeVideo()" class="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-times text-sm"></i>
+                </button>
+            </div>
+            <div class="p-4">
+                <video id="modalVideo" controls class="w-full rounded-xl"></video>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat Modal -->
+    <div id="chatModal" class="fixed inset-0 bg-black bg-opacity-80 hidden flex items-center justify-center p-4 z-50">
+        <div class="glass rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center p-4 border-b border-gray-800">
+                <div>
+                    <h3 class="text-lg font-bold">Chat</h3>
+                    <p class="text-sm text-gray-400" id="chatEmail"></p>
+                </div>
+                <button onclick="closeChat()" class="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-times text-sm"></i>
+                </button>
+            </div>
+            <div id="chatMessages" class="flex-1 overflow-y-auto p-4 space-y-3 max-h-80"></div>
+            <form id="chatForm" class="p-4 border-t border-gray-800">
+                <div class="flex space-x-3">
+                    <input type="text" id="messageInput" placeholder="Type message..." class="flex-1 apple-input text-white p-3">
+                    <button type="submit" class="apple-btn text-white px-4 py-3">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let currentUserId = null;
+
+        // Auth Functions
+        async function sendOTP() {
+            try {
+                const response = await fetch('https://mail-steel.vercel.app/admin/send-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('otpSection').classList.remove('hidden');
+                    showNotification('OTP sent successfully', 'success');
+                } else {
+                    showNotification(data.error || 'Failed to send OTP', 'error');
+                }
+            } catch (error) {
+                showNotification('Failed to send OTP', 'error');
+            }
+        }
+
+        async function verifyOTP() {
+            const otp = document.getElementById('otpInput').value;
+            if (!otp) return showNotification('Please enter OTP', 'warning');
+            
+            try {
+                const response = await fetch('https://mail-steel.vercel.app/admin/verify-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ otp })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    sessionStorage.setItem('adminToken', otp);
+                    document.getElementById('authSection').classList.add('hidden');
+                    document.getElementById('dashboard').classList.remove('hidden');
+                    loadSubmissions();
+                    showNotification('Login successful', 'success');
+                } else {
+                    showNotification(data.error || 'Invalid OTP', 'error');
+                }
+            } catch (error) {
+                showNotification('Failed to verify OTP', 'error');
+            }
+        }
+
+        function logout() {
+            sessionStorage.removeItem('adminToken');
+            location.reload();
+        }
+
+        // Dashboard Functions
+        async function loadSubmissions() {
+            try {
+                const response = await fetch('/api/admin/submissions');
+                const data = await response.json();
+                if (!data.success) throw new Error(data.error);
+
+                const submissions = data.submissions;
+                updateStats(submissions);
+                renderSubmissions(submissions);
+            } catch (error) {
+                document.getElementById('submissionsList').innerHTML = '<div class="p-6 text-center text-red-400">Error loading submissions</div>';
+            }
+        }
+
+        function updateStats(submissions) {
+            document.getElementById('totalCount').textContent = submissions.length;
+            document.getElementById('pendingCount').textContent = submissions.filter(s => s.status === 'pending').length;
+            document.getElementById('approvedCount').textContent = submissions.filter(s => s.status === 'approved').length;
+            document.getElementById('paidCount').textContent = submissions.filter(s => s.status === 'paid').length;
+        }
+
+        function renderSubmissions(submissions) {
+            document.getElementById('submissionsList').innerHTML = submissions.map(s => `
+                <div class="p-4 hover:bg-gray-900 transition-colors">
+                    <div class="flex flex-col space-y-3">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h3 class="font-bold text-lg">${s.ticket_user_name}</h3>
+                                <p class="text-gray-400 text-sm">ID: ${s.id}</p>
+                            </div>
+                            <span class="px-3 py-1 rounded-full text-xs font-medium ${getStatusClass(s.status)}">${s.status}</span>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div class="bg-gray-800 p-3 rounded-lg">
+                                <h4 class="font-medium text-gray-300 mb-2">Card Details</h4>
+                                <div class="space-y-1 text-sm text-gray-400">
+                                    <p><i class="fas fa-ticket-alt w-4"></i> ${s.ticket_number}</p>
+                                    <p><i class="fas fa-credit-card w-4"></i> ${s.gc_code}</p>
+                                    <p><i class="fas fa-phone w-4"></i> ${s.gc_phone}</p>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-gray-800 p-3 rounded-lg">
+                                <h4 class="font-medium text-gray-300 mb-2">Payment</h4>
+                                <div class="space-y-1 text-sm text-gray-400">
+                                    <p><i class="fas fa-rupee-sign w-4"></i> ₹${s.amount}</p>
+                                    <p><i class="fas fa-wallet w-4"></i> ${s.upi_id}</p>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-gray-800 p-3 rounded-lg">
+                                <h4 class="font-medium text-gray-300 mb-2">User</h4>
+                                <div class="space-y-1 text-sm text-gray-400">
+                                    <p><i class="fas fa-user w-4"></i> ${s.user_email}</p>
+                                    <p><i class="fas fa-calendar w-4"></i> ${new Date(s.created_at).toLocaleDateString()}</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex flex-wrap gap-2 pt-2">
+                            <button onclick="showVideo('${s.proof_video_url}')" class="px-3 py-2 bg-blue-600 rounded-lg text-sm">
+                                <i class="fas fa-video mr-1"></i>Video
+                            </button>
+                            <button onclick="openChat('${s.user_id}', '${s.user_email}')" class="px-3 py-2 bg-green-600 rounded-lg text-sm">
+                                <i class="fas fa-comments mr-1"></i>Chat
+                            </button>
+                            ${getActionButtons(s)}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function getStatusClass(status) {
+            const classes = {
+                pending: 'bg-yellow-100 text-yellow-800',
+                approved: 'bg-green-100 text-green-800',
+                rejected: 'bg-red-100 text-red-800',
+                paid: 'bg-blue-100 text-blue-800',
+                closed: 'bg-gray-100 text-gray-800'
+            };
+            return classes[status] || classes.closed;
+        }
+
+        function getActionButtons(s) {
+            const buttons = {
+                pending: `<button onclick="updateStatus('${s.id}', 'approved')" class="px-3 py-2 bg-green-600 rounded-lg text-sm">Approve</button>
+                         <button onclick="updateStatus('${s.id}', 'rejected')" class="px-3 py-2 bg-red-600 rounded-lg text-sm">Reject</button>`,
+                approved: `<button onclick="updateStatus('${s.id}', 'paid')" class="px-3 py-2 bg-blue-600 rounded-lg text-sm">Mark Paid</button>`,
+                paid: `<button onclick="updateStatus('${s.id}', 'closed')" class="px-3 py-2 bg-gray-600 rounded-lg text-sm">Close</button>`
+            };
+            return buttons[s.status] || '';
+        }
+
+        async function updateStatus(id, status) {
+            if (!confirm(`Mark as ${status}?`)) return;
+            
+            try {
+                const response = await fetch(`/api/admin/submissions/${id}/status`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showNotification(`Status updated to ${status}`, 'success');
+                    loadSubmissions();
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                showNotification('Failed to update status', 'error');
+            }
+        }
+
+        // Modal Functions
+        function showVideo(url) {
+            document.getElementById('modalVideo').src = url;
+            document.getElementById('videoModal').classList.remove('hidden');
+        }
+
+        function closeVideo() {
+            document.getElementById('modalVideo').src = '';
+            document.getElementById('videoModal').classList.add('hidden');
+        }
+
+        function openChat(userId, email) {
+            currentUserId = userId;
+            document.getElementById('chatEmail').textContent = email;
+            document.getElementById('chatModal').classList.remove('hidden');
+            loadMessages();
+        }
+
+        function closeChat() {
+            document.getElementById('chatModal').classList.add('hidden');
+            currentUserId = null;
+        }
+
+        async function loadMessages() {
+            if (!currentUserId) return;
+            
+            try {
+                const response = await fetch(`/api/admin/messages/${currentUserId}`);
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('chatMessages').innerHTML = data.messages.map(m => `
+                        <div class="flex ${m.sender === 'admin' ? 'justify-end' : 'justify-start'}">
+                            <div class="max-w-xs px-4 py-2 rounded-2xl ${m.sender === 'admin' ? 'bg-blue-600' : 'bg-gray-700'}">
+                                <p class="text-sm">${m.content}</p>
+                                <p class="text-xs opacity-70 mt-1">${new Date(m.created_at).toLocaleString()}</p>
+                            </div>
+                        </div>
+                    `).join('');
+                    document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
+                }
+            } catch (error) {
+                document.getElementById('chatMessages').innerHTML = '<div class="text-center text-red-400">Error loading messages</div>';
+            }
+        }
+
+        document.getElementById('chatForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const message = document.getElementById('messageInput').value.trim();
+            if (!message || !currentUserId) return;
+
+            try {
+                const response = await fetch('/api/admin/messages', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: currentUserId, content: message })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('messageInput').value = '';
+                    loadMessages();
+                }
+            } catch (error) {
+                showNotification('Failed to send message', 'error');
+            }
+        });
+
+        // Utility Functions
+        function showNotification(message, type = 'info') {
+            const colors = {
+                success: 'bg-green-500',
+                error: 'bg-red-500',
+                warning: 'bg-yellow-500',
+                info: 'bg-blue-500'
+            };
+            
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 ${colors[type]} text-white p-4 rounded-xl z-50 transform transition-all duration-300 translate-x-full`;
+            notification.innerHTML = `<div class="flex items-center space-x-2">
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+                <span>${message}</span>
+            </div>`;
+            
+            document.body.appendChild(notification);
+            setTimeout(() => notification.classList.remove('translate-x-full'), 100);
+            setTimeout(() => {
+                notification.classList.add('translate-x-full');
+                setTimeout(() => document.body.removeChild(notification), 300);
+            }, 3000);
+        }
+
+        // Initialize
+        window.onload = function() {
+            if (sessionStorage.getItem('adminToken')) {
+                document.getElementById('authSection').classList.add('hidden');
+                document.getElementById('dashboard').classList.remove('hidden');
+                loadSubmissions();
+            }
+        };
+    </script>
+</body>
+</html>
