@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin - SLD GC Portal</title>
+    <title>Admin - GCX Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -63,6 +63,14 @@
     </style>
 </head>
 <body class="bg-black text-white min-h-screen">
+    <!-- Loading Modal -->
+    <div id="loadingModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
+        <div class="glass rounded-3xl p-8 text-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+            <p id="loadingMessage" class="text-white text-lg">Processing...</p>
+        </div>
+    </div>
+
     <!-- Auth Section -->
     <div id="authSection" class="min-h-screen bg-gradient-to-br from-black via-gray-900 to-blue-900 flex items-center justify-center p-4">
         <div class="glass p-8 rounded-3xl max-w-md w-full fade-in">
@@ -70,17 +78,35 @@
                 <div class="w-20 h-20 glass rounded-2xl flex items-center justify-center mx-auto mb-6">
                     <i class="fas fa-shield-alt text-3xl text-blue-400"></i>
                 </div>
-                <h1 class="text-3xl font-bold mb-2">Admin Portal</h1>
+                <h1 class="text-3xl font-bold mb-2">GCX Admin Portal</h1>
                 <p class="text-gray-400">Secure access required</p>
             </div>
+            
+            <!-- Error Display Area -->
+            <div id="authError" class="mb-6 p-4 bg-red-500 bg-opacity-20 border border-red-500 border-opacity-30 rounded-xl hidden">
+                <p id="authErrorMessage" class="text-red-300 text-center"></p>
+            </div>
+            
             <div class="space-y-4">
-                <button onclick="sendOTP()" class="w-full apple-btn text-white py-3 px-6 font-medium">
-                    <i class="fas fa-paper-plane mr-2"></i>Send OTP
+                <button id="sendOtpBtn" onclick="sendOTP()" class="w-full apple-btn text-white py-3 px-6 font-medium">
+                    <span class="button-text">
+                        <i class="fas fa-paper-plane mr-2"></i>Send OTP
+                    </span>
+                    <span class="button-loading hidden">
+                        <i class="fas fa-spinner fa-spin mr-2"></i>
+                        Sending...
+                    </span>
                 </button>
                 <div id="otpSection" class="hidden space-y-4">
                     <input type="text" id="otpInput" placeholder="Enter 6-digit OTP" class="w-full apple-input text-white p-3">
-                    <button onclick="verifyOTP()" class="w-full apple-btn text-white py-3 px-6 font-medium">
-                        <i class="fas fa-check-circle mr-2"></i>Verify OTP
+                    <button id="verifyOtpBtn" onclick="verifyOTP()" class="w-full apple-btn text-white py-3 px-6 font-medium">
+                        <span class="button-text">
+                            <i class="fas fa-check-circle mr-2"></i>Verify OTP
+                        </span>
+                        <span class="button-loading hidden">
+                            <i class="fas fa-spinner fa-spin mr-2"></i>
+                            Verifying...
+                        </span>
                     </button>
                 </div>
             </div>
@@ -98,7 +124,7 @@
                             <i class="fas fa-tachometer-alt text-white"></i>
                         </div>
                         <div>
-                            <h1 class="text-xl font-bold">Admin Dashboard</h1>
+                            <h1 class="text-xl font-bold">GCX Admin Dashboard</h1>
                             <p class="text-sm text-gray-400">Manage submissions</p>
                         </div>
                     </div>
@@ -202,28 +228,88 @@
     <script>
         let currentUserId = null;
 
+        // Loading state management
+        function setLoading(buttonId, isLoading) {
+            const button = document.getElementById(buttonId);
+            const buttonText = button.querySelector('.button-text');
+            const buttonLoading = button.querySelector('.button-loading');
+            
+            if (isLoading) {
+                button.disabled = true;
+                buttonText.classList.add('hidden');
+                buttonLoading.classList.remove('hidden');
+            } else {
+                button.disabled = false;
+                buttonText.classList.remove('hidden');
+                buttonLoading.classList.add('hidden');
+            }
+        }
+        
+        // Loading modal management
+        function showLoadingModal(message = 'Processing...') {
+            document.getElementById('loadingMessage').textContent = message;
+            document.getElementById('loadingModal').classList.remove('hidden');
+            console.log('Loading modal shown:', message);
+        }
+        
+        function hideLoadingModal() {
+            document.getElementById('loadingModal').classList.add('hidden');
+            console.log('Loading modal hidden');
+        }
+        
+        // Error display management
+        function showAuthError(message) {
+            const errorDiv = document.getElementById('authError');
+            const errorMessage = document.getElementById('authErrorMessage');
+            errorMessage.textContent = message;
+            errorDiv.classList.remove('hidden');
+        }
+        
+        function hideAuthError() {
+            document.getElementById('authError').classList.add('hidden');
+        }
+
         // Auth Functions
         async function sendOTP() {
+            hideAuthError();
+            setLoading('sendOtpBtn', true);
+            showLoadingModal('Sending OTP...');
+            
             try {
                 const response = await fetch('https://mail-steel.vercel.app/admin/send-otp', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' }
                 });
                 const data = await response.json();
+                
+                hideLoadingModal();
+                setLoading('sendOtpBtn', false);
+                
                 if (data.success) {
                     document.getElementById('otpSection').classList.remove('hidden');
+                    document.getElementById('otpInput').focus();
                     showNotification('OTP sent successfully', 'success');
                 } else {
-                    showNotification(data.error || 'Failed to send OTP', 'error');
+                    showAuthError(data.error || 'Failed to send OTP');
                 }
             } catch (error) {
-                showNotification('Failed to send OTP', 'error');
+                console.error('Error:', error);
+                hideLoadingModal();
+                setLoading('sendOtpBtn', false);
+                showAuthError('Failed to send OTP. Please try again.');
             }
         }
 
         async function verifyOTP() {
             const otp = document.getElementById('otpInput').value;
-            if (!otp) return showNotification('Please enter OTP', 'warning');
+            if (!otp) {
+                showAuthError('Please enter OTP');
+                return;
+            }
+            
+            hideAuthError();
+            setLoading('verifyOtpBtn', true);
+            showLoadingModal('Verifying OTP...');
             
             try {
                 const response = await fetch('https://mail-steel.vercel.app/admin/verify-otp', {
@@ -232,6 +318,10 @@
                     body: JSON.stringify({ otp })
                 });
                 const data = await response.json();
+                
+                hideLoadingModal();
+                setLoading('verifyOtpBtn', false);
+                
                 if (data.success) {
                     sessionStorage.setItem('adminToken', otp);
                     document.getElementById('authSection').classList.add('hidden');
@@ -239,30 +329,43 @@
                     loadSubmissions();
                     showNotification('Login successful', 'success');
                 } else {
-                    showNotification(data.error || 'Invalid OTP', 'error');
+                    showAuthError(data.error || 'Invalid OTP');
                 }
             } catch (error) {
-                showNotification('Failed to verify OTP', 'error');
+                console.error('Error:', error);
+                hideLoadingModal();
+                setLoading('verifyOtpBtn', false);
+                showAuthError('Failed to verify OTP. Please try again.');
             }
         }
 
         function logout() {
             sessionStorage.removeItem('adminToken');
+            hideLoadingModal();
+            hideAuthError();
             location.reload();
         }
 
         // Dashboard Functions
         async function loadSubmissions() {
+            showLoadingModal('Loading submissions...');
+            
             try {
                 const response = await fetch('/api/admin/submissions');
                 const data = await response.json();
+                
+                hideLoadingModal();
+                
                 if (!data.success) throw new Error(data.error);
 
                 const submissions = data.submissions;
                 updateStats(submissions);
                 renderSubmissions(submissions);
             } catch (error) {
+                console.error('Error:', error);
+                hideLoadingModal();
                 document.getElementById('submissionsList').innerHTML = '<div class="p-6 text-center text-red-400">Error loading submissions</div>';
+                showNotification('Failed to load submissions', 'error');
             }
         }
 
@@ -350,6 +453,8 @@
         async function updateStatus(id, status) {
             if (!confirm(`Mark as ${status}?`)) return;
             
+            showLoadingModal(`Updating status to ${status}...`);
+            
             try {
                 const response = await fetch(`/api/admin/submissions/${id}/status`, {
                     method: 'POST',
@@ -357,6 +462,9 @@
                     body: JSON.stringify({ status })
                 });
                 const data = await response.json();
+                
+                hideLoadingModal();
+                
                 if (data.success) {
                     showNotification(`Status updated to ${status}`, 'success');
                     loadSubmissions();
@@ -364,6 +472,8 @@
                     throw new Error(data.error);
                 }
             } catch (error) {
+                console.error('Error:', error);
+                hideLoadingModal();
                 showNotification('Failed to update status', 'error');
             }
         }
@@ -409,6 +519,7 @@
                     document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
                 }
             } catch (error) {
+                console.error('Error loading messages:', error);
                 document.getElementById('chatMessages').innerHTML = '<div class="text-center text-red-400">Error loading messages</div>';
             }
         }
@@ -430,6 +541,7 @@
                     loadMessages();
                 }
             } catch (error) {
+                console.error('Error:', error);
                 showNotification('Failed to send message', 'error');
             }
         });
