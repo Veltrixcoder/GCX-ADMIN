@@ -259,6 +259,23 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+app.get('/status', (req, res) => {
+    log('info', 'Status page accessed', { 
+        path: req.path, 
+        userAgent: req.get('User-Agent'),
+        ip: req.ip 
+    });
+    res.sendFile(path.join(__dirname, 'public', 'status.html'));
+});
+
+app.get('/admin', (req, res) => {
+    log('info', 'Admin page accessed', { 
+        path: req.path, 
+        userAgent: req.get('User-Agent'),
+        ip: req.ip 
+    });
+    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
 
 app.get('/server-logs', (req, res) => {
     log('info', 'Server logs page accessed', { 
@@ -431,7 +448,6 @@ app.get('/api/user-submissions/:userId', checkOtpAuth, async (req, res) => {
 app.post('/api/gift-cards', checkOtpAuth, async (req, res) => {
   const {
         ticket_user_name,
-        ticket_number,
         gc_code,
         gc_phone,
         upi_id,
@@ -440,7 +456,7 @@ app.post('/api/gift-cards', checkOtpAuth, async (req, res) => {
   } = req.body;
     const userId = req.headers['x-user-id'];
 
-    if (!ticket_user_name || !ticket_number || !gc_code || !gc_phone || !upi_id || !amount || !proof_video_url) {
+    if (!ticket_user_name || !gc_code || !gc_phone || !upi_id || !amount || !proof_video_url) {
         return res.status(400).json({ 
             success: false, 
             error: 'All fields are required including the video URL' 
@@ -452,14 +468,13 @@ app.post('/api/gift-cards', checkOtpAuth, async (req, res) => {
             `INSERT INTO submissions (
                 user_id, 
                 ticket_user_name,
-                ticket_number,
                 gc_code,
                 gc_phone,
                 upi_id,
                 amount,
                 proof_video_url
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-            [userId, ticket_user_name, ticket_number, gc_code, gc_phone, upi_id, amount, proof_video_url]
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+            [userId, ticket_user_name, gc_code, gc_phone, upi_id, amount, proof_video_url]
     );
         res.json({ 
             success: true, 
@@ -791,4 +806,4 @@ setInterval(() => {
     });
 }, 30000); // Every 30 seconds
 
-   module.exports = app;
+module.exports = app; 
