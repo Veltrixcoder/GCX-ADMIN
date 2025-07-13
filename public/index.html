@@ -3,581 +3,1251 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin - GCX Portal</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <title>GCX Admin Panel</title>
     <style>
-        :root {
-            --apple-blue: #007AFF;
-            --apple-gray: #1C1C1E;
-            --apple-light: #F2F2F7;
-            --apple-dark: #000000;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
-            -webkit-font-smoothing: antialiased;
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
         }
-        
-        .glass {
-            background: rgba(255, 255, 255, 0.08);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
         }
-        
-        .apple-btn {
-            background: var(--apple-blue);
-            border-radius: 12px;
-            transition: all 0.2s ease;
+
+        .auth-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            padding: 40px;
+            text-align: center;
+            max-width: 400px;
+            margin: 50px auto;
         }
-        
-        .apple-btn:hover { transform: scale(0.98); }
-        
-        .apple-input {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 12px;
+
+        .admin-panel {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+            margin: 20px auto;
+            display: none;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        .logout-btn {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
             transition: all 0.3s ease;
         }
-        
-        .apple-input:focus {
-            border-color: var(--apple-blue);
-            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
+
+        .logout-btn:hover {
+            background: rgba(255,255,255,0.3);
         }
-        
-        .apple-card {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+
+        .nav-tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        .nav-tab {
+            flex: 1;
+            padding: 15px 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
             transition: all 0.3s ease;
+            font-size: 16px;
+            font-weight: 500;
         }
-        
-        .apple-card:hover { transform: translateY(-2px); }
-        
-        .loading { animation: spin 1s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        
-        .fade-in { animation: fadeIn 0.5s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .nav-tab.active {
+            background: white;
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .nav-tab:hover {
+            background: #e9ecef;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 20px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+            transform: translateY(-2px);
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .btn-warning:hover {
+            background: #e0a800;
+            transform: translateY(-2px);
+        }
+
+        .card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .card-header {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-bottom: 1px solid #dee2e6;
+            font-weight: 600;
+        }
+
+        .card-body {
+            padding: 20px;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .table th, .table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .status-pending {
+            background: #ffeaa7;
+            color: #fdcb6e;
+        }
+
+        .status-approved {
+            background: #00b894;
+            color: white;
+        }
+
+        .status-rejected {
+            background: #d63031;
+            color: white;
+        }
+
+        .status-paid {
+            background: #74b9ff;
+            color: white;
+        }
+
+        .status-closed {
+            background: #636e72;
+            color: white;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid transparent;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border-color: #c3e6cb;
+        }
+
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border-color: #f5c6cb;
+        }
+
+        .message-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .message {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            position: relative;
+        }
+
+        .message.user {
+            background: #e3f2fd;
+            margin-left: 20px;
+        }
+
+        .message.admin {
+            background: #f3e5f5;
+            margin-right: 20px;
+        }
+
+        .message-header {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .message-content {
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 1.1em;
+            margin-top: 5px;
+        }
+
+        .search-box {
+            margin-bottom: 20px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 1.25em;
+            font-weight: 600;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5em;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .close-btn:hover {
+            color: #000;
+        }
+
+        @media (max-width: 768px) {
+            .nav-tabs {
+                flex-direction: column;
+            }
+
+            .nav-tab {
+                text-align: center;
+            }
+
+            .table {
+                font-size: 14px;
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .card-body > div[style*='display: grid'] {
+                grid-template-columns: 1fr !important;
+            }
+        }
+        @media (max-width: 480px) {
+            .auth-card, .admin-panel, .modal-content {
+                padding: 10px;
+                max-width: 100vw;
+            }
+            .header {
+                padding: 10px;
+                font-size: 1.1em;
+            }
+            .btn, .btn-primary, .btn-danger, .btn-success, .btn-warning {
+                padding: 10px 12px;
+                font-size: 14px;
+            }
+            .form-group input, .form-group select, .form-group textarea {
+                padding: 8px;
+                font-size: 14px;
+            }
+            .modal-content {
+                padding: 10px;
+            }
+        }
     </style>
 </head>
-<body class="bg-black text-white min-h-screen">
-    <!-- Loading Modal -->
-    <div id="loadingModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
-        <div class="glass rounded-3xl p-8 text-center">
-            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-            <p id="loadingMessage" class="text-white text-lg">Processing...</p>
-        </div>
-    </div>
-
-    <!-- Auth Section -->
-    <div id="authSection" class="min-h-screen bg-gradient-to-br from-black via-gray-900 to-blue-900 flex items-center justify-center p-4">
-        <div class="glass p-8 rounded-3xl max-w-md w-full fade-in">
-            <div class="text-center mb-8">
-                <div class="w-20 h-20 glass rounded-2xl flex items-center justify-center mx-auto mb-6">
-                    <i class="fas fa-shield-alt text-3xl text-blue-400"></i>
-                </div>
-                <h1 class="text-3xl font-bold mb-2">GCX Admin Portal</h1>
-                <p class="text-gray-400">Secure access required</p>
+<body>
+    <div class="container">
+        <!-- Authentication Card -->
+        <div id="authCard" class="auth-card">
+            <h2>GCX Admin Panel</h2>
+            <p style="margin: 20px 0; color: #666;">Please authenticate to access the admin panel</p>
+            
+            <div id="otpRequestForm">
+                <button class="btn btn-primary" onclick="requestOTP()">Send Admin OTP</button>
             </div>
             
-            <!-- Error Display Area -->
-            <div id="authError" class="mb-6 p-4 bg-red-500 bg-opacity-20 border border-red-500 border-opacity-30 rounded-xl hidden">
-                <p id="authErrorMessage" class="text-red-300 text-center"></p>
+            <div id="otpVerifyForm" class="hidden">
+                <div class="form-group">
+                    <label for="otpCode">Enter OTP Code</label>
+                    <input type="text" id="otpCode" placeholder="Enter 6-digit OTP" maxlength="6">
+                </div>
+                <button class="btn btn-primary" onclick="verifyOTP()">Verify OTP</button>
             </div>
             
-            <div class="space-y-4">
-                <button id="sendOtpBtn" onclick="sendOTP()" class="w-full apple-btn text-white py-3 px-6 font-medium">
-                    <span class="button-text">
-                        <i class="fas fa-paper-plane mr-2"></i>Send OTP
-                    </span>
-                    <span class="button-loading hidden">
-                        <i class="fas fa-spinner fa-spin mr-2"></i>
-                        Sending...
-                    </span>
-                </button>
-                <div id="otpSection" class="hidden space-y-4">
-                    <input type="text" id="otpInput" placeholder="Enter 6-digit OTP" class="w-full apple-input text-white p-3">
-                    <button id="verifyOtpBtn" onclick="verifyOTP()" class="w-full apple-btn text-white py-3 px-6 font-medium">
-                        <span class="button-text">
-                            <i class="fas fa-check-circle mr-2"></i>Verify OTP
-                        </span>
-                        <span class="button-loading hidden">
-                            <i class="fas fa-spinner fa-spin mr-2"></i>
-                            Verifying...
-                        </span>
-                    </button>
+            <div id="authMessage"></div>
+        </div>
+
+        <!-- Admin Panel -->
+        <div id="adminPanel" class="admin-panel">
+            <div class="header">
+                <h1>GCX Admin Panel</h1>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
+            
+            <div class="nav-tabs">
+                <button class="nav-tab active" onclick="showTab('dashboard')">Dashboard</button>
+                <button class="nav-tab" onclick="showTab('users')">Users</button>
+                <button class="nav-tab" onclick="showTab('messages')">Messages</button>
+                <button class="nav-tab" onclick="showTab('submissions')">Submissions</button>
+            </div>
+            
+            <!-- Dashboard Tab -->
+            <div id="dashboard" class="tab-content active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalUsers">0</div>
+                        <div class="stat-label">Total Users</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalMessages">0</div>
+                        <div class="stat-label">Total Messages</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalSubmissions">0</div>
+                        <div class="stat-label">Total Submissions</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="pendingSubmissions">0</div>
+                        <div class="stat-label">Pending Submissions</div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">Quick Actions</div>
+                    <div class="card-body">
+                        <button class="btn btn-primary" onclick="refreshDashboard()">Refresh Dashboard</button>
+                        <button class="btn btn-success" onclick="showTab('submissions')">View Submissions</button>
+                        <button class="btn btn-warning" onclick="showTab('messages')">View Messages</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Users Tab -->
+            <div id="users" class="tab-content">
+                <div class="card">
+                    <div class="card-header">
+                        User Management
+                        <button class="btn btn-primary" onclick="loadUsers()" style="float: right;">Refresh</button>
+                    </div>
+                    <div class="card-body">
+                        <div class="search-box">
+                            <input type="text" id="userSearch" placeholder="Search users by email..." onkeyup="filterUsers()">
+                        </div>
+                        <div id="usersLoading" class="loading hidden">Loading users...</div>
+                        <div id="usersContent"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Messages Tab -->
+            <div id="messages" class="tab-content">
+                <div class="card">
+                    <div class="card-header">
+                        Message Management
+                        <button class="btn btn-primary" onclick="loadAllMessages()" style="float: right;">Refresh</button>
+                    </div>
+                    <div class="card-body">
+                        <div class="search-box">
+                            <input type="text" id="messageSearch" placeholder="Search messages..." onkeyup="filterMessages()">
+                        </div>
+                        <div id="messagesLoading" class="loading hidden">Loading messages...</div>
+                        <div id="messagesContent"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Submissions Tab -->
+            <div id="submissions" class="tab-content">
+                <div class="card">
+                    <div class="card-header">
+                        Submission Management
+                        <button class="btn btn-primary" onclick="loadSubmissions()" style="float: right;">Refresh</button>
+                    </div>
+                    <div class="card-body">
+                        <div class="search-box">
+                            <input type="text" id="submissionSearch" placeholder="Search submissions..." onkeyup="filterSubmissions()">
+                        </div>
+                        <div id="submissionsLoading" class="loading hidden">Loading submissions...</div>
+                        <div id="submissionsContent"></div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Dashboard -->
-    <div id="dashboard" class="hidden min-h-screen bg-black">
-        <!-- Header -->
-        <header class="glass sticky top-0 z-50 border-b border-gray-800">
-            <div class="max-w-7xl mx-auto px-4 py-4">
-                <div class="flex justify-between items-center">
-                    <div class="flex items-center space-x-4">
-                        <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
-                            <i class="fas fa-tachometer-alt text-white"></i>
-                        </div>
-                        <div>
-                            <h1 class="text-xl font-bold">GCX Admin Dashboard</h1>
-                            <p class="text-sm text-gray-400">Manage submissions</p>
-                        </div>
-                    </div>
-                    <button onclick="logout()" class="apple-btn bg-red-500 text-white px-4 py-2">
-                        <i class="fas fa-sign-out-alt mr-2"></i>Logout
-                    </button>
-                </div>
+    <!-- Modal for User Messages -->
+    <div id="userMessagesModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">User Messages</div>
+                <button class="close-btn" onclick="closeModal('userMessagesModal')">&times;</button>
             </div>
-        </header>
-
-        <main class="max-w-7xl mx-auto p-4 pb-20">
-            <!-- Stats -->
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <div class="apple-card p-4">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-gray-400 text-sm">Total</p>
-                            <p id="totalCount" class="text-2xl font-bold">0</p>
-                        </div>
-                        <i class="fas fa-file-alt text-blue-400 text-xl"></i>
-                    </div>
+            <div id="userMessagesContent">
+                <div class="message-container" id="messageContainer"></div>
+                <div class="form-group">
+                    <label for="adminMessage">Send Message</label>
+                    <textarea id="adminMessage" rows="3" placeholder="Type your message here..."></textarea>
                 </div>
-                <div class="apple-card p-4">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-gray-400 text-sm">Pending</p>
-                            <p id="pendingCount" class="text-2xl font-bold text-yellow-400">0</p>
-                        </div>
-                        <i class="fas fa-clock text-yellow-400 text-xl"></i>
-                    </div>
-                </div>
-                <div class="apple-card p-4">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-gray-400 text-sm">Approved</p>
-                            <p id="approvedCount" class="text-2xl font-bold text-green-400">0</p>
-                        </div>
-                        <i class="fas fa-check-circle text-green-400 text-xl"></i>
-                    </div>
-                </div>
-                <div class="apple-card p-4">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-gray-400 text-sm">Paid</p>
-                            <p id="paidCount" class="text-2xl font-bold text-blue-400">0</p>
-                        </div>
-                        <i class="fas fa-money-bill-wave text-blue-400 text-xl"></i>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Submissions -->
-            <div class="glass rounded-2xl overflow-hidden">
-                <div class="p-6 border-b border-gray-800">
-                    <h2 class="text-xl font-bold">Recent Submissions</h2>
-                </div>
-                <div id="submissionsList" class="divide-y divide-gray-800"></div>
-            </div>
-        </main>
-    </div>
-
-    <!-- Video Modal -->
-    <div id="videoModal" class="fixed inset-0 bg-black bg-opacity-80 hidden flex items-center justify-center p-4 z-50">
-        <div class="glass rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-            <div class="flex justify-between items-center p-4 border-b border-gray-800">
-                <h3 class="text-lg font-bold">Video Proof</h3>
-                <button onclick="closeVideo()" class="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center">
-                    <i class="fas fa-times text-sm"></i>
-                </button>
-            </div>
-            <div class="p-4">
-                <video id="modalVideo" controls class="w-full rounded-xl"></video>
+                <button class="btn btn-primary" onclick="sendAdminMessage()">Send Message</button>
             </div>
         </div>
     </div>
 
-    <!-- Chat Modal -->
-    <div id="chatModal" class="fixed inset-0 bg-black bg-opacity-80 hidden flex items-center justify-center p-4 z-50">
-        <div class="glass rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col">
-            <div class="flex justify-between items-center p-4 border-b border-gray-800">
-                <div>
-                    <h3 class="text-lg font-bold">Chat</h3>
-                    <p class="text-sm text-gray-400" id="chatEmail"></p>
-                </div>
-                <button onclick="closeChat()" class="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center">
-                    <i class="fas fa-times text-sm"></i>
-                </button>
+    <!-- Modal for Submission Details -->
+    <div id="submissionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Submission Details</div>
+                <button class="close-btn" onclick="closeModal('submissionModal')">&times;</button>
             </div>
-            <div id="chatMessages" class="flex-1 overflow-y-auto p-4 space-y-3 max-h-80"></div>
-            <form id="chatForm" class="p-4 border-t border-gray-800">
-                <div class="flex space-x-3">
-                    <input type="text" id="messageInput" placeholder="Type message..." class="flex-1 apple-input text-white p-3">
-                    <button type="submit" class="apple-btn text-white px-4 py-3">
-                        <i class="fas fa-paper-plane"></i>
-                    </button>
-                </div>
-            </form>
+            <div id="submissionDetails"></div>
         </div>
     </div>
 
     <script>
+        const API_BASE = 'https://gcx-admin.vercel.app';
+        let adminToken = '';
         let currentUserId = null;
+        let allUsers = [];
+        let allMessages = [];
+        let allSubmissions = [];
 
-        // Loading state management
-        function setLoading(buttonId, isLoading) {
-            const button = document.getElementById(buttonId);
-            const buttonText = button.querySelector('.button-text');
-            const buttonLoading = button.querySelector('.button-loading');
-            
-            if (isLoading) {
-                button.disabled = true;
-                buttonText.classList.add('hidden');
-                buttonLoading.classList.remove('hidden');
+        // --- SESSION MANAGEMENT ---
+        // Store token and expiry in localStorage
+        function setAdminSession(token) {
+            const expiry = Date.now() + 60 * 60 * 1000; // 1 hour
+            localStorage.setItem('adminToken', token);
+            localStorage.setItem('adminTokenExpiry', expiry);
+            adminToken = token;
+        }
+        function getAdminSession() {
+            const token = localStorage.getItem('adminToken');
+            const expiry = localStorage.getItem('adminTokenExpiry');
+            if (token && expiry && Date.now() < parseInt(expiry)) {
+                adminToken = token;
+                return true;
             } else {
-                button.disabled = false;
-                buttonText.classList.remove('hidden');
-                buttonLoading.classList.add('hidden');
+                clearAdminSession();
+                return false;
             }
         }
-        
-        // Loading modal management
-        function showLoadingModal(message = 'Processing...') {
-            document.getElementById('loadingMessage').textContent = message;
-            document.getElementById('loadingModal').classList.remove('hidden');
-            console.log('Loading modal shown:', message);
-        }
-        
-        function hideLoadingModal() {
-            document.getElementById('loadingModal').classList.add('hidden');
-            console.log('Loading modal hidden');
-        }
-        
-        // Error display management
-        function showAuthError(message) {
-            const errorDiv = document.getElementById('authError');
-            const errorMessage = document.getElementById('authErrorMessage');
-            errorMessage.textContent = message;
-            errorDiv.classList.remove('hidden');
-        }
-        
-        function hideAuthError() {
-            document.getElementById('authError').classList.add('hidden');
+        function clearAdminSession() {
+            localStorage.removeItem('adminToken');
+            localStorage.removeItem('adminTokenExpiry');
+            adminToken = '';
         }
 
-        // Auth Functions
-        async function sendOTP() {
-            hideAuthError();
-            setLoading('sendOtpBtn', true);
-            showLoadingModal('Sending OTP...');
-            
+        // Authentication Functions
+        async function requestOTP() {
             try {
-                const response = await fetch('https://mail-steel.vercel.app/admin/send-otp', {
+                const response = await fetch(`${API_BASE}/api/send-otp`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ type: 'admin' })
                 });
+
                 const data = await response.json();
                 
-                hideLoadingModal();
-                setLoading('sendOtpBtn', false);
-                
                 if (data.success) {
-                    document.getElementById('otpSection').classList.remove('hidden');
-                    document.getElementById('otpInput').focus();
-                    showNotification('OTP sent successfully', 'success');
+                    document.getElementById('otpRequestForm').classList.add('hidden');
+                    document.getElementById('otpVerifyForm').classList.remove('hidden');
+                    showMessage('OTP sent successfully!', 'success');
                 } else {
-                    showAuthError(data.error || 'Failed to send OTP');
+                    showMessage(data.error || 'Failed to send OTP', 'error');
                 }
             } catch (error) {
-                console.error('Error:', error);
-                hideLoadingModal();
-                setLoading('sendOtpBtn', false);
-                showAuthError('Failed to send OTP. Please try again.');
+                showMessage('Error sending OTP: ' + error.message, 'error');
             }
         }
 
         async function verifyOTP() {
-            const otp = document.getElementById('otpInput').value;
-            if (!otp) {
-                showAuthError('Please enter OTP');
+            const otpCode = document.getElementById('otpCode').value;
+            
+            if (!otpCode || otpCode.length !== 6) {
+                showMessage('Please enter a valid 6-digit OTP', 'error');
                 return;
             }
-            
-            hideAuthError();
-            setLoading('verifyOtpBtn', true);
-            showLoadingModal('Verifying OTP...');
-            
+
             try {
-                const response = await fetch('https://mail-steel.vercel.app/admin/verify-otp', {
+                const response = await fetch(`${API_BASE}/api/verify-otp`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ otp })
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ otp: otpCode, type: 'admin' })
                 });
+
                 const data = await response.json();
                 
-                hideLoadingModal();
-                setLoading('verifyOtpBtn', false);
-                
                 if (data.success) {
-                    sessionStorage.setItem('adminToken', otp);
-                    document.getElementById('authSection').classList.add('hidden');
-                    document.getElementById('dashboard').classList.remove('hidden');
-                    loadSubmissions();
-                    showNotification('Login successful', 'success');
+                    setAdminSession(otpCode);
+                    document.getElementById('authCard').style.display = 'none';
+                    document.getElementById('adminPanel').style.display = 'block';
+                    showMessage('Authentication successful!', 'success');
+                    refreshDashboard();
                 } else {
-                    showAuthError(data.error || 'Invalid OTP');
+                    showMessage(data.error || 'Invalid OTP', 'error');
                 }
             } catch (error) {
-                console.error('Error:', error);
-                hideLoadingModal();
-                setLoading('verifyOtpBtn', false);
-                showAuthError('Failed to verify OTP. Please try again.');
+                showMessage('Error verifying OTP: ' + error.message, 'error');
             }
         }
 
         function logout() {
-            sessionStorage.removeItem('adminToken');
-            hideLoadingModal();
-            hideAuthError();
-            location.reload();
+            clearAdminSession();
+            document.getElementById('authCard').style.display = 'block';
+            document.getElementById('adminPanel').style.display = 'none';
+            document.getElementById('otpRequestForm').classList.remove('hidden');
+            document.getElementById('otpVerifyForm').classList.add('hidden');
+            document.getElementById('otpCode').value = '';
+            document.getElementById('authMessage').innerHTML = '';
         }
 
-        // Dashboard Functions
-        async function loadSubmissions() {
-            showLoadingModal('Loading submissions...');
-            
-            try {
-                const response = await fetch('/api/admin/submissions');
-                const data = await response.json();
-                
-                hideLoadingModal();
-                
-                if (!data.success) throw new Error(data.error);
+        function showMessage(message, type) {
+            const messageDiv = document.getElementById('authMessage');
+            messageDiv.innerHTML = `<div class="alert alert-${type === 'success' ? 'success' : 'danger'}">${message}</div>`;
+            setTimeout(() => {
+                messageDiv.innerHTML = '';
+            }, 5000);
+        }
 
-                const submissions = data.submissions;
-                updateStats(submissions);
-                renderSubmissions(submissions);
-            } catch (error) {
-                console.error('Error:', error);
-                hideLoadingModal();
-                document.getElementById('submissionsList').innerHTML = '<div class="p-6 text-center text-red-400">Error loading submissions</div>';
-                showNotification('Failed to load submissions', 'error');
+        // Tab Management
+        function showTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+            
+            // Load data for the selected tab
+            switch(tabName) {
+                case 'dashboard':
+                    refreshDashboard();
+                    break;
+                case 'users':
+                    loadUsers();
+                    break;
+                case 'messages':
+                    loadAllMessages();
+                    break;
+                case 'submissions':
+                    loadSubmissions();
+                    break;
             }
         }
 
-        function updateStats(submissions) {
-            document.getElementById('totalCount').textContent = submissions.length;
-            document.getElementById('pendingCount').textContent = submissions.filter(s => s.status === 'pending').length;
-            document.getElementById('approvedCount').textContent = submissions.filter(s => s.status === 'approved').length;
-            document.getElementById('paidCount').textContent = submissions.filter(s => s.status === 'paid').length;
+        // Dashboard Functions
+        async function refreshDashboard() {
+            try {
+                // Load all data in parallel
+                const [usersResponse, messagesResponse, submissionsResponse] = await Promise.all([
+                    fetch(`${API_BASE}/api/admin/users`, {
+                        headers: { 'x-otp-token': adminToken }
+                    }),
+                    fetch(`${API_BASE}/api/admin/messages/all`, {
+                        headers: { 'x-otp-token': adminToken }
+                    }),
+                    fetch(`${API_BASE}/api/admin/submissions`, {
+                        headers: { 'x-otp-token': adminToken }
+                    })
+                ]);
+
+                const [usersData, messagesData, submissionsData] = await Promise.all([
+                    usersResponse.json(),
+                    messagesResponse.json(),
+                    submissionsResponse.json()
+                ]);
+
+                // Update dashboard stats
+                document.getElementById('totalUsers').textContent = usersData.success ? usersData.users.length : 0;
+                document.getElementById('totalMessages').textContent = messagesData.success ? messagesData.messages.length : 0;
+                document.getElementById('totalSubmissions').textContent = submissionsData.success ? submissionsData.submissions.length : 0;
+                
+                const pendingCount = submissionsData.success ? 
+                    submissionsData.submissions.filter(s => s.status === 'pending').length : 0;
+                document.getElementById('pendingSubmissions').textContent = pendingCount;
+
+            } catch (error) {
+                console.error('Error refreshing dashboard:', error);
+            }
         }
 
-        function renderSubmissions(submissions) {
-            document.getElementById('submissionsList').innerHTML = submissions.map(s => `
-                <div class="p-4 hover:bg-gray-900 transition-colors">
-                    <div class="flex flex-col space-y-3">
-                        <div class="flex justify-between items-start">
+        // User Management Functions
+        async function loadUsers() {
+            document.getElementById('usersLoading').classList.remove('hidden');
+            document.getElementById('usersContent').innerHTML = '';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/users`, {
+                    headers: { 'x-otp-token': adminToken }
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    allUsers = data.users;
+                    displayUsers(allUsers);
+                } else {
+                    document.getElementById('usersContent').innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+                }
+            } catch (error) {
+                document.getElementById('usersContent').innerHTML = `<div class="alert alert-danger">Error loading users: ${error.message}</div>`;
+            } finally {
+                document.getElementById('usersLoading').classList.add('hidden');
+            }
+        }
+
+        function displayUsers(users) {
+            const content = document.getElementById('usersContent');
+            
+            if (users.length === 0) {
+                content.innerHTML = '<p>No users found.</p>';
+                return;
+            }
+
+            let html = '';
+            users.forEach(user => {
+                html += `
+                    <div class="card" style="margin-bottom: 16px;">
+                        <div class="card-body">
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                <div><strong>ID:</strong> ${user.id}</div>
+                                <div><strong>Email:</strong> ${user.email}</div>
+                                <div><strong>Created At:</strong> ${new Date(user.created_at).toLocaleString()}</div>
+                                <div style="display: flex; gap: 8px; margin-top: 8px;">
+                                    <button class="btn btn-primary" onclick="viewUserMessages(${user.id})">Messages</button>
+                                    <button class="btn btn-danger" onclick="deleteUser(${user.id})">Delete</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            content.innerHTML = html;
+        }
+
+        function filterUsers() {
+            const searchTerm = document.getElementById('userSearch').value.toLowerCase();
+            const filteredUsers = allUsers.filter(user => 
+                user.email.toLowerCase().includes(searchTerm)
+            );
+            displayUsers(filteredUsers);
+        }
+
+        async function deleteUser(userId) {
+            if (!confirm('Are you sure you want to delete this user? This will also delete all their messages and submissions.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/users/${userId}`, {
+                    method: 'DELETE',
+                    headers: { 'x-otp-token': adminToken }
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('User deleted successfully');
+                    loadUsers();
+                } else {
+                    alert(data.error || 'Failed to delete user');
+                }
+            } catch (error) {
+                alert('Error deleting user: ' + error.message);
+            }
+        }
+
+        // Message Management Functions
+        async function loadAllMessages() {
+            document.getElementById('messagesLoading').classList.remove('hidden');
+            document.getElementById('messagesContent').innerHTML = '';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/messages/all`, {
+                    headers: { 'x-otp-token': adminToken }
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    allMessages = data.messages;
+                    displayMessages(allMessages);
+                } else {
+                    document.getElementById('messagesContent').innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+                }
+            } catch (error) {
+                document.getElementById('messagesContent').innerHTML = `<div class="alert alert-danger">Error loading messages: ${error.message}</div>`;
+            } finally {
+                document.getElementById('messagesLoading').classList.add('hidden');
+            }
+        }
+
+        function displayMessages(messages) {
+            const content = document.getElementById('messagesContent');
+            
+            if (messages.length === 0) {
+                content.innerHTML = '<p>No messages found.</p>';
+                return;
+            }
+
+            let html = '';
+            messages.forEach(message => {
+                html += `
+                    <div class="card" style="margin-bottom: 16px;">
+                        <div class="card-body">
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                <div><strong>ID:</strong> ${message.id}</div>
+                                <div><strong>User Email:</strong> ${message.user_email}</div>
+                                <div><strong>Sender:</strong> <span class="status-badge ${message.sender === 'admin' ? 'status-approved' : 'status-pending'}">${message.sender}</span></div>
+                                <div><strong>Content:</strong> ${message.content}</div>
+                                <div><strong>Created At:</strong> ${new Date(message.created_at).toLocaleString()}</div>
+                                <div style="display: flex; gap: 8px; margin-top: 8px;">
+                                    <button class="btn btn-danger" onclick="deleteMessage(${message.id})">Delete</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            content.innerHTML = html;
+        }
+
+        function filterMessages() {
+            const searchTerm = document.getElementById('messageSearch').value.toLowerCase();
+            const filteredMessages = allMessages.filter(message => 
+                message.content.toLowerCase().includes(searchTerm) ||
+                message.user_email.toLowerCase().includes(searchTerm)
+            );
+            displayMessages(filteredMessages);
+        }
+
+        async function viewUserMessages(userId) {
+            currentUserId = userId;
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/messages/${userId}`, {
+                    headers: { 'x-otp-token': adminToken }
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayUserMessages(data.messages);
+                    document.getElementById('userMessagesModal').style.display = 'block';
+                } else {
+                    alert(data.error || 'Failed to load user messages');
+                }
+            } catch (error) {
+                alert('Error loading user messages: ' + error.message);
+            }
+        }
+
+        function displayUserMessages(messages) {
+            const container = document.getElementById('messageContainer');
+            
+            if (messages.length === 0) {
+                container.innerHTML = '<p>No messages found for this user.</p>';
+                return;
+            }
+
+            let html = '';
+            messages.forEach(message => {
+                html += `
+                    <div class="message ${message.sender}">
+                        <div class="message-header">
+                            ${message.sender === 'admin' ? 'Admin' : 'User'} - ${new Date(message.created_at).toLocaleString()}
+                        </div>
+                        <div class="message-content">${message.content}</div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+            container.scrollTop = container.scrollHeight;
+        }
+
+        async function sendAdminMessage() {
+            const content = document.getElementById('adminMessage').value.trim();
+            
+            if (!content) {
+                alert('Please enter a message');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/messages`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-otp-token': adminToken
+                    },
+                    body: JSON.stringify({
+                        userId: currentUserId,
+                        content: content
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('adminMessage').value = '';
+                    viewUserMessages(currentUserId); // Refresh messages
+                } else {
+                    alert(data.error || 'Failed to send message');
+                }
+            } catch (error) {
+                alert('Error sending message: ' + error.message);
+            }
+        }
+
+        async function deleteMessage(messageId) {
+            if (!confirm('Are you sure you want to delete this message?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/messages/${messageId}`, {
+                    method: 'DELETE',
+                    headers: { 'x-otp-token': adminToken }
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Message deleted successfully');
+                    loadAllMessages();
+                } else {
+                    alert(data.error || 'Failed to delete message');
+                }
+            } catch (error) {
+                alert('Error deleting message: ' + error.message);
+            }
+        }
+
+        // Submission Management Functions
+        async function loadSubmissions() {
+            document.getElementById('submissionsLoading').classList.remove('hidden');
+            document.getElementById('submissionsContent').innerHTML = '';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/submissions`, {
+                    headers: { 'x-otp-token': adminToken }
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    allSubmissions = data.submissions;
+                    displaySubmissions(allSubmissions);
+                } else {
+                    document.getElementById('submissionsContent').innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+                }
+            } catch (error) {
+                document.getElementById('submissionsContent').innerHTML = `<div class="alert alert-danger">Error loading submissions: ${error.message}</div>`;
+            } finally {
+                document.getElementById('submissionsLoading').classList.add('hidden');
+            }
+        }
+
+        function displaySubmissions(submissions) {
+            const content = document.getElementById('submissionsContent');
+            
+            if (submissions.length === 0) {
+                content.innerHTML = '<p>No submissions found.</p>';
+                return;
+            }
+
+            let html = '';
+            submissions.forEach(submission => {
+                html += `
+                    <div class="card" style="margin-bottom: 16px;">
+                        <div class="card-body">
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                <div><strong>ID:</strong> ${submission.id}</div>
+                                <div><strong>User Email:</strong> ${submission.user_email}</div>
+                                <div><strong>Name:</strong> ${submission.ticket_user_name}</div>
+                                <div><strong>GC Code:</strong> ${submission.gc_code}</div>
+                                <div><strong>Amount:</strong> ₹${submission.amount}</div>
+                                <div><strong>Status:</strong> <span class="status-badge status-${submission.status}">${submission.status}</span></div>
+                                <div><strong>Created At:</strong> ${new Date(submission.created_at).toLocaleString()}</div>
+                                <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
+                                    <button class="btn btn-primary" onclick="viewSubmission(${submission.id})">View</button>
+                                    <button class="btn btn-success" onclick="updateSubmissionStatus(${submission.id}, 'approved')">Approve</button>
+                                    <button class="btn btn-danger" onclick="updateSubmissionStatus(${submission.id}, 'rejected')">Reject</button>
+                                    <button class="btn btn-warning" onclick="updateSubmissionStatus(${submission.id}, 'paid')">Mark Paid</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            content.innerHTML = html;
+        }
+
+        function filterSubmissions() {
+            const searchTerm = document.getElementById('submissionSearch').value.toLowerCase();
+            const filteredSubmissions = allSubmissions.filter(submission => 
+                submission.user_email.toLowerCase().includes(searchTerm) ||
+                submission.ticket_user_name.toLowerCase().includes(searchTerm) ||
+                submission.gc_code.toLowerCase().includes(searchTerm) ||
+                submission.status.toLowerCase().includes(searchTerm)
+            );
+            displaySubmissions(filteredSubmissions);
+        }
+
+        async function viewSubmission(submissionId) {
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/submissions/${submissionId}`, {
+                    headers: { 'x-otp-token': adminToken }
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    displaySubmissionDetails(data.submission);
+                    document.getElementById('submissionModal').style.display = 'block';
+                } else {
+                    alert(data.error || 'Failed to load submission details');
+                }
+            } catch (error) {
+                alert('Error loading submission details: ' + error.message);
+            }
+        }
+
+        function displaySubmissionDetails(submission) {
+            const content = document.getElementById('submissionDetails');
+            
+            content.innerHTML = `
+                <div class="card">
+                    <div class="card-header">Submission #${submission.id}</div>
+                    <div class="card-body">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                             <div>
-                                <h3 class="font-bold text-lg">${s.ticket_user_name}</h3>
-                                <p class="text-gray-400 text-sm">ID: ${s.id}</p>
+                                <h4>User Information</h4>
+                                <p><strong>Email:</strong> ${submission.user_email}</p>
+                                <p><strong>Name:</strong> ${submission.ticket_user_name}</p>
+                                <p><strong>Phone:</strong> ${submission.gc_phone}</p>
+                                <p><strong>UPI ID:</strong> ${submission.upi_id}</p>
                             </div>
-                            <span class="px-3 py-1 rounded-full text-xs font-medium ${getStatusClass(s.status)}">${s.status}</span>
-                        </div>
-                        
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            <div class="bg-gray-800 p-3 rounded-lg">
-                                <h4 class="font-medium text-gray-300 mb-2">Card Details</h4>
-                                <div class="space-y-1 text-sm text-gray-400">
-                                    <p><i class="fas fa-ticket-alt w-4"></i> ${s.ticket_number}</p>
-                                    <p><i class="fas fa-credit-card w-4"></i> ${s.gc_code}</p>
-                                    <p><i class="fas fa-phone w-4"></i> ${s.gc_phone}</p>
-                                </div>
-                            </div>
-                            
-                            <div class="bg-gray-800 p-3 rounded-lg">
-                                <h4 class="font-medium text-gray-300 mb-2">Payment</h4>
-                                <div class="space-y-1 text-sm text-gray-400">
-                                    <p><i class="fas fa-rupee-sign w-4"></i> ₹${s.amount}</p>
-                                    <p><i class="fas fa-wallet w-4"></i> ${s.upi_id}</p>
-                                </div>
-                            </div>
-                            
-                            <div class="bg-gray-800 p-3 rounded-lg">
-                                <h4 class="font-medium text-gray-300 mb-2">User</h4>
-                                <div class="space-y-1 text-sm text-gray-400">
-                                    <p><i class="fas fa-user w-4"></i> ${s.user_email}</p>
-                                    <p><i class="fas fa-calendar w-4"></i> ${new Date(s.created_at).toLocaleDateString()}</p>
-                                </div>
+                            <div>
+                                <h4>Gift Card Details</h4>
+                                <p><strong>GC Code:</strong> ${submission.gc_code}</p>
+                                <p><strong>Amount:</strong> ₹${submission.amount}</p>
+                                <p><strong>Status:</strong> <span class="status-badge status-${submission.status}">${submission.status}</span></p>
+                                <p><strong>Created:</strong> ${new Date(submission.created_at).toLocaleString()}</p>
                             </div>
                         </div>
                         
-                        <div class="flex flex-wrap gap-2 pt-2">
-                            <button onclick="showVideo('${s.proof_video_url}')" class="px-3 py-2 bg-blue-600 rounded-lg text-sm">
-                                <i class="fas fa-video mr-1"></i>Video
-                            </button>
-                            <button onclick="openChat('${s.user_id}', '${s.user_email}')" class="px-3 py-2 bg-green-600 rounded-lg text-sm">
-                                <i class="fas fa-comments mr-1"></i>Chat
-                            </button>
-                            ${getActionButtons(s)}
+                        <div style="margin-top: 20px;">
+                            <h4>Proof Video</h4>
+                            ${submission.proof_video_url ? 
+                                `<video controls style="width: 100%; max-width: 400px;">
+                                    <source src="${submission.proof_video_url}" type="video/mp4">
+                                    Your browser does not support the video tag.
+                                </video>` : 
+                                '<p>No proof video available</p>'
+                            }
+                        </div>
+                        
+                        <div style="margin-top: 20px;">
+                            <h4>Update Status</h4>
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <button class="btn btn-warning" onclick="updateSubmissionStatus(${submission.id}, 'pending')">Pending</button>
+                                <button class="btn btn-success" onclick="updateSubmissionStatus(${submission.id}, 'approved')">Approved</button>
+                                <button class="btn btn-danger" onclick="updateSubmissionStatus(${submission.id}, 'rejected')">Rejected</button>
+                                <button class="btn btn-primary" onclick="updateSubmissionStatus(${submission.id}, 'paid')">Paid</button>
+                                <button class="btn" style="background: #636e72; color: white;" onclick="updateSubmissionStatus(${submission.id}, 'closed')">Closed</button>
+                            </div>
                         </div>
                     </div>
                 </div>
-            `).join('');
+            `;
         }
 
-        function getStatusClass(status) {
-            const classes = {
-                pending: 'bg-yellow-100 text-yellow-800',
-                approved: 'bg-green-100 text-green-800',
-                rejected: 'bg-red-100 text-red-800',
-                paid: 'bg-blue-100 text-blue-800',
-                closed: 'bg-gray-100 text-gray-800'
-            };
-            return classes[status] || classes.closed;
-        }
-
-        function getActionButtons(s) {
-            const buttons = {
-                pending: `<button onclick="updateStatus('${s.id}', 'approved')" class="px-3 py-2 bg-green-600 rounded-lg text-sm">Approve</button>
-                         <button onclick="updateStatus('${s.id}', 'rejected')" class="px-3 py-2 bg-red-600 rounded-lg text-sm">Reject</button>`,
-                approved: `<button onclick="updateStatus('${s.id}', 'paid')" class="px-3 py-2 bg-blue-600 rounded-lg text-sm">Mark Paid</button>`,
-                paid: `<button onclick="updateStatus('${s.id}', 'closed')" class="px-3 py-2 bg-gray-600 rounded-lg text-sm">Close</button>`
-            };
-            return buttons[s.status] || '';
-        }
-
-        async function updateStatus(id, status) {
-            if (!confirm(`Mark as ${status}?`)) return;
-            
-            showLoadingModal(`Updating status to ${status}...`);
-            
+        async function updateSubmissionStatus(submissionId, status) {
             try {
-                const response = await fetch(`/api/admin/submissions/${id}/status`, {
+                const response = await fetch(`${API_BASE}/api/admin/submissions/${submissionId}/status`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ status })
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-otp-token': adminToken
+                    },
+                    body: JSON.stringify({ status: status })
                 });
+
                 const data = await response.json();
                 
-                hideLoadingModal();
-                
                 if (data.success) {
-                    showNotification(`Status updated to ${status}`, 'success');
+                    alert(`Status updated to ${status}`);
                     loadSubmissions();
+                    closeModal('submissionModal');
                 } else {
-                    throw new Error(data.error);
+                    alert(data.error || 'Failed to update status');
                 }
             } catch (error) {
-                console.error('Error:', error);
-                hideLoadingModal();
-                showNotification('Failed to update status', 'error');
+                alert('Error updating status: ' + error.message);
             }
         }
 
         // Modal Functions
-        function showVideo(url) {
-            document.getElementById('modalVideo').src = url;
-            document.getElementById('videoModal').classList.remove('hidden');
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
         }
 
-        function closeVideo() {
-            document.getElementById('modalVideo').src = '';
-            document.getElementById('videoModal').classList.add('hidden');
-        }
-
-        function openChat(userId, email) {
-            currentUserId = userId;
-            document.getElementById('chatEmail').textContent = email;
-            document.getElementById('chatModal').classList.remove('hidden');
-            loadMessages();
-        }
-
-        function closeChat() {
-            document.getElementById('chatModal').classList.add('hidden');
-            currentUserId = null;
-        }
-
-        async function loadMessages() {
-            if (!currentUserId) return;
-            
-            try {
-                const response = await fetch(`/api/admin/messages/${currentUserId}`);
-                const data = await response.json();
-                if (data.success) {
-                    document.getElementById('chatMessages').innerHTML = data.messages.map(m => `
-                        <div class="flex ${m.sender === 'admin' ? 'justify-end' : 'justify-start'}">
-                            <div class="max-w-xs px-4 py-2 rounded-2xl ${m.sender === 'admin' ? 'bg-blue-600' : 'bg-gray-700'}">
-                                <p class="text-sm">${m.content}</p>
-                                <p class="text-xs opacity-70 mt-1">${new Date(m.created_at).toLocaleString()}</p>
-                            </div>
-                        </div>
-                    `).join('');
-                    document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modals = document.querySelectorAll('.modal');
+            modals.forEach(modal => {
+                if (event.target === modal) {
+                    modal.style.display = 'none';
                 }
-            } catch (error) {
-                console.error('Error loading messages:', error);
-                document.getElementById('chatMessages').innerHTML = '<div class="text-center text-red-400">Error loading messages</div>';
-            }
+            });
         }
 
-        document.getElementById('chatForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const message = document.getElementById('messageInput').value.trim();
-            if (!message || !currentUserId) return;
-
-            try {
-                const response = await fetch('/api/admin/messages', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: currentUserId, content: message })
-                });
-                const data = await response.json();
-                if (data.success) {
-                    document.getElementById('messageInput').value = '';
-                    loadMessages();
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                showNotification('Failed to send message', 'error');
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if already authenticated (in a real app, you'd check token validity)
+            if (getAdminSession()) {
+                document.getElementById('authCard').style.display = 'none';
+                document.getElementById('adminPanel').style.display = 'block';
+                refreshDashboard();
+            } else {
+                clearAdminSession();
             }
         });
 
-        // Utility Functions
-        function showNotification(message, type = 'info') {
-            const colors = {
-                success: 'bg-green-500',
-                error: 'bg-red-500',
-                warning: 'bg-yellow-500',
-                info: 'bg-blue-500'
-            };
-            
-            const notification = document.createElement('div');
-            notification.className = `fixed top-4 right-4 ${colors[type]} text-white p-4 rounded-xl z-50 transform transition-all duration-300 translate-x-full`;
-            notification.innerHTML = `<div class="flex items-center space-x-2">
-                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
-                <span>${message}</span>
-            </div>`;
-            
-            document.body.appendChild(notification);
-            setTimeout(() => notification.classList.remove('translate-x-full'), 100);
-            setTimeout(() => {
-                notification.classList.add('translate-x-full');
-                setTimeout(() => document.body.removeChild(notification), 300);
-            }, 3000);
-        }
-
-        // Initialize
-        window.onload = function() {
-            if (sessionStorage.getItem('adminToken')) {
-                document.getElementById('authSection').classList.add('hidden');
-                document.getElementById('dashboard').classList.remove('hidden');
-                loadSubmissions();
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Enter key for OTP verification
+            if (e.key === 'Enter' && !document.getElementById('otpVerifyForm').classList.contains('hidden')) {
+                verifyOTP();
             }
-        };
+            
+            // Escape key to close modals
+            if (e.key === 'Escape') {
+                closeModal('userMessagesModal');
+                closeModal('submissionModal');
+            }
+        });
+
+        // Auto-refresh dashboard every 5 minutes
+        setInterval(() => {
+            if (adminToken && document.getElementById('dashboard').classList.contains('active')) {
+                refreshDashboard();
+            }
+        }, 300000); // 5 minutes
     </script>
 </body>
 </html>
