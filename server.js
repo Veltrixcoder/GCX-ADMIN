@@ -480,7 +480,9 @@ app.post('/api/admin/messages', async (req, res) => {
     try {
         const { userId, content } = req.body;
         const db = await getDb();
-        const result = await db.collection('messages').insertOne({ user_id: userId, content, sender: 'admin', created_at: new Date() });
+        // Convert userId to ObjectId
+        const userIdObj = ObjectId.isValid(userId) ? new ObjectId(userId) : userId;
+        const result = await db.collection('messages').insertOne({ user_id: userIdObj, content, sender: 'admin', created_at: new Date() });
         res.json({ success: true });
     } catch (error) {
         console.error('Error sending message:', error);
@@ -492,7 +494,9 @@ app.delete('/api/admin/messages/:messageId',  async (req, res) => {
     const { messageId } = req.params;
     try {
         const db = await getDb();
-        await db.collection('messages').deleteOne({ _id: messageId });
+        // Convert messageId to ObjectId
+        const messageIdObj = ObjectId.isValid(messageId) ? new ObjectId(messageId) : messageId;
+        await db.collection('messages').deleteOne({ _id: messageIdObj });
         res.json({ success: true });
     } catch (error) {
         console.error('Error deleting message:', error);
