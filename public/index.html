@@ -1250,6 +1250,13 @@
                 refreshDashboard();
             }
         }, 300000); // 5 minutes
+
+        // Auto-poll messages every 2 seconds when on messages tab
+        setInterval(() => {
+            if (adminToken && document.getElementById('messages').classList.contains('active')) {
+                loadAllMessages();
+            }
+        }, 2000); // 2 seconds
     </script>
 </body>
 </html>
