@@ -554,16 +554,18 @@ app.post('/api/admin/submissions/:submissionId/status', async (req, res) => {
 
     try {
         const db = await getDb();
+        // Convert submissionId to ObjectId
+        const submissionIdObj = ObjectId.isValid(submissionId) ? new ObjectId(submissionId) : submissionId;
         // First check if submission exists
-        const checkResult = await db.collection('submissions').findOne({ _id: submissionId });
+        const checkResult = await db.collection('submissions').findOne({ _id: submissionIdObj });
 
         if (!checkResult) {
             return res.status(404).json({ success: false, error: 'Submission not found' });
         }
 
-        // Update submission status with a CASE statement to ensure valid status
+        // Update submission status
         const updateResult = await db.collection('submissions').updateOne(
-            { _id: submissionId },
+            { _id: submissionIdObj },
             { $set: { status: status, updated_at: new Date() } }
         );
 
@@ -594,7 +596,9 @@ app.get('/api/admin/submissions/:submissionId', async (req, res) => {
     const { submissionId } = req.params;
     try {
         const db = await getDb();
-        const submission = await db.collection('submissions').findOne({ _id: submissionId });
+        // Convert submissionId to ObjectId
+        const submissionIdObj = ObjectId.isValid(submissionId) ? new ObjectId(submissionId) : submissionId;
+        const submission = await db.collection('submissions').findOne({ _id: submissionIdObj });
         
         if (!submission) {
             return res.status(404).json({ success: false, error: 'Submission not found' });
