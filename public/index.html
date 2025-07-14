@@ -874,7 +874,6 @@
         // Message Management Functions
         async function loadAllMessages() {
             document.getElementById('messagesLoading').classList.remove('hidden');
-            document.getElementById('messagesContent').innerHTML = '';
 
             try {
                 const response = await fetch(`${API_BASE}/api/admin/messages/all`, {
@@ -884,13 +883,23 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    allMessages = data.messages;
-                    displayMessages(allMessages);
+                    // Only update if there are new messages
+                    const newMessages = data.messages;
+                    const hasNewMessages = JSON.stringify(newMessages) !== JSON.stringify(allMessages);
+                    
+                    if (hasNewMessages) {
+                        allMessages = newMessages;
+                        displayMessages(allMessages);
+                    }
                 } else {
-                    document.getElementById('messagesContent').innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+                    if (allMessages.length === 0) {
+                        document.getElementById('messagesContent').innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+                    }
                 }
             } catch (error) {
-                document.getElementById('messagesContent').innerHTML = `<div class="alert alert-danger">Error loading messages: ${error.message}</div>`;
+                if (allMessages.length === 0) {
+                    document.getElementById('messagesContent').innerHTML = `<div class="alert alert-danger">Error loading messages: ${error.message}</div>`;
+                }
             } finally {
                 document.getElementById('messagesLoading').classList.add('hidden');
             }
@@ -948,12 +957,46 @@
                 if (data.success) {
                     displayUserMessages(data.messages);
                     document.getElementById('userMessagesModal').style.display = 'block';
+                    // Start auto-polling for this user's messages
+                    startUserMessagePolling(userId);
                 } else {
                     alert(data.error || 'Failed to load user messages');
                 }
             } catch (error) {
                 alert('Error loading user messages: ' + error.message);
             }
+        }
+
+        let userMessagePollingInterval = null;
+
+        function startUserMessagePolling(userId) {
+            // Clear any existing polling
+            if (userMessagePollingInterval) {
+                clearInterval(userMessagePollingInterval);
+            }
+            
+            // Start new polling
+            userMessagePollingInterval = setInterval(async () => {
+                if (currentUserId === userId && document.getElementById('userMessagesModal').style.display === 'block') {
+                    try {
+                        const response = await fetch(`${API_BASE}/api/admin/messages/${userId}`, {
+                            headers: { 'x-otp-token': adminToken }
+                        });
+
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            displayUserMessages(data.messages);
+                        }
+                    } catch (error) {
+                        console.error('Error polling user messages:', error);
+                    }
+                } else {
+                    // Stop polling if modal is closed or user changed
+                    clearInterval(userMessagePollingInterval);
+                    userMessagePollingInterval = null;
+                }
+            }, 2000); // Poll every 2 seconds
         }
 
         function displayUserMessages(messages) {
@@ -1206,6 +1249,12 @@
         // Modal Functions
         function closeModal(modalId) {
             document.getElementById(modalId).style.display = 'none';
+            
+            // Stop user message polling if closing user messages modal
+            if (modalId === 'userMessagesModal' && userMessagePollingInterval) {
+                clearInterval(userMessagePollingInterval);
+                userMessagePollingInterval = null;
+            }
         }
 
         // Close modal when clicking outside
