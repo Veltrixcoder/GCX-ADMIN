@@ -1,16 +1,15 @@
-require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const bcrypt = require('bcrypt');
 const multer = require('multer');
-const { generateOtp, sendOtpEmail } = require('./mailService');
-const { getPool, initializeDatabase, closePool } = require('./db');
+const { getDb } = require('./db');
 const otpService = require('./otpService');
 const axios = require('axios');
 const http = require('http');
 const socketIo = require('socket.io');
 const fs = require('fs');
+const { ObjectId } = require('mongodb');
 
 const app = express();
 const server = http.createServer(app);
@@ -20,33 +19,14 @@ const io = socketIo(server, {
         methods: ["GET", "POST"]
     }
 });
-const port = process.env.PORT || 3000;
-
-// Initialize database and start server
-(async () => {
-    try {
-        await initializeDatabase();
-        console.log('Database initialized successfully.');
-        
-        // Test database connection
-        const pool = getPool();
-        const client = await pool.connect();
-        client.release();
-        console.log('Connected to main database');
-        
-        server.listen(port, () => {
-            console.log(`Server running on port ${port}`);
-        });
-    } catch (err) {
-        console.error('Failed to initialize database or start server:', err);
-        process.exit(1);
-    }
-})();
+const port = 7860;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public'));
+
+// Serve static files from React build directory
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Store logs in memory (in production, use a database)
 let serverLogs = [];
@@ -129,7 +109,7 @@ function log(level, message, details = {}) {
     console.log(`[${level.toUpperCase()}] ${message}`, details);
 }
 
-// OTP Authentication middleware
+// OTP Authentication middleware (MongoDB version)
 const requireOtpAuth = async (req, res, next) => {
     const otp = req.headers['x-otp-token'];
     const email = req.headers['x-user-email'];
@@ -139,16 +119,16 @@ const requireOtpAuth = async (req, res, next) => {
     }
 
     try {
-        const pool = getPool();
-        const result = await pool.query(
-            'SELECT * FROM otps WHERE email = $1 AND otp = $2 AND verified = true AND expires_at > NOW()',
-            [email, otp]
-        );
-
-        if (result.rows.length === 0) {
+        const db = await getDb();
+        const result = await db.collection('otps').findOne({
+            email,
+            otp,
+            verified: true,
+            expires_at: { $gt: new Date() }
+        });
+        if (!result) {
             return res.status(401).json({ error: 'Invalid or expired OTP' });
         }
-
         req.user = { email };
         next();
     } catch (err) {
@@ -157,46 +137,29 @@ const requireOtpAuth = async (req, res, next) => {
     }
 };
 
-// Admin OTP Authentication middleware
+// Admin OTP Authentication middleware (MongoDB version)
 const requireAdminOtpAuth = async (req, res, next) => {
     try {
         const otp = req.headers['x-otp-token'];
         const email = req.headers['x-user-email'];
-
         if (!otp || !email) {
-            return res.status(401).json({ 
-                success: false, 
-                error: 'Missing authentication headers' 
-            });
+            return res.status(401).json({ success: false, error: 'Missing authentication headers' });
         }
-
-        const pool = getPool();
-        // Verify OTP
-        const result = await pool.query(
-            'SELECT * FROM otps WHERE email = $1 AND otp = $2 AND is_used = false AND expires_at > NOW()',
-            [email, otp]
-        );
-
-        if (result.rows.length === 0) {
-            return res.status(401).json({ 
-                success: false, 
-                error: 'Invalid or expired OTP' 
-            });
+        const db = await getDb();
+        const result = await db.collection('otps').findOne({
+            email,
+            otp,
+            is_used: false,
+            expires_at: { $gt: new Date() }
+        });
+        if (!result) {
+            return res.status(401).json({ success: false, error: 'Invalid or expired OTP' });
         }
-
-        // Mark OTP as used
-        await pool.query(
-            'UPDATE otps SET is_used = true WHERE email = $1 AND otp = $2',
-            [email, otp]
-        );
-
+        await db.collection('otps').updateOne({ email, otp }, { $set: { is_used: true } });
         next();
     } catch (error) {
         console.error('Admin auth error:', error);
-        res.status(500).json({ 
-            success: false, 
-            error: 'Authentication error' 
-        });
+        res.status(500).json({ success: false, error: 'Authentication error' });
     }
 };
 
@@ -259,33 +222,6 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.get('/status', (req, res) => {
-    log('info', 'Status page accessed', { 
-        path: req.path, 
-        userAgent: req.get('User-Agent'),
-        ip: req.ip 
-    });
-    res.sendFile(path.join(__dirname, 'public', 'status.html'));
-});
-
-app.get('/admin', (req, res) => {
-    log('info', 'Admin page accessed', { 
-        path: req.path, 
-        userAgent: req.get('User-Agent'),
-        ip: req.ip 
-    });
-    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
-});
-
-app.get('/server-logs', (req, res) => {
-    log('info', 'Server logs page accessed', { 
-        path: req.path, 
-        userAgent: req.get('User-Agent'),
-        ip: req.ip 
-    });
-    res.sendFile(path.join(__dirname, 'public', 'server-logs.html'));
-});
-
 // API Routes
 
 // Send OTP
@@ -330,164 +266,105 @@ app.post('/api/verify-otp', async (req, res) => {
   }
 });
 
-// Register new user
+// Register new user (MongoDB version)
 app.post('/api/register', async (req, res) => {
     const { name, email, password } = req.body;
-
     if (!name || !email || !password) {
-        return res.status(400).json({ 
-            success: false, 
-            error: 'Name, email and password are required' 
-        });
+        return res.status(400).json({ success: false, error: 'Name, email and password are required' });
     }
-
     try {
-        // Check if user already exists
-        const { rows: existingUsers } = await getPool().query(
-            'SELECT * FROM users WHERE email = $1',
-            [email]
-        );
-
-        if (existingUsers.length > 0) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'Email already registered' 
-            });
+        const db = await getDb();
+        const existingUser = await db.collection('users').findOne({ email });
+        if (existingUser) {
+            return res.status(400).json({ success: false, error: 'Email already registered' });
         }
-
-        // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
-
-        // Create new user
-        const { rows: newUser } = await getPool().query(
-            'INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email',
-            [name, email, hashedPassword]
-        );
-
-        res.json({ 
-            success: true, 
-            user: newUser[0],
-            message: 'Registration successful' 
-        });
+        const result = await db.collection('users').insertOne({ name, email, password: hashedPassword, created_at: new Date() });
+        res.json({ success: true, user: { id: result.insertedId, name, email }, message: 'Registration successful' });
     } catch (error) {
         console.error('Error registering user:', error);
-        res.status(500).json({ 
-            success: false, 
-            error: 'Failed to register user' 
-        });
+        res.status(500).json({ success: false, error: 'Failed to register user' });
     }
 });
 
-// Login
+// Login (MongoDB version)
 app.post('/api/login', async (req, res) => {
     const { email, password } = req.body;
-
     if (!email || !password) {
-        return res.status(400).json({ 
-            success: false, 
-            error: 'Email and password are required' 
-        });
+        return res.status(400).json({ success: false, error: 'Email and password are required' });
     }
-
     try {
-        const { rows: users } = await getPool().query(
-            'SELECT * FROM users WHERE email = $1',
-            [email]
-        );
-
-        if (users.length === 0) {
-            return res.status(401).json({ 
-                success: false, 
-                error: 'Invalid email or password' 
-            });
+        const db = await getDb();
+        const user = await db.collection('users').findOne({ email });
+        if (!user) {
+            return res.status(401).json({ success: false, error: 'Invalid email or password' });
         }
-
-        const user = users[0];
         const validPassword = await bcrypt.compare(password, user.password);
-
         if (!validPassword) {
-            return res.status(401).json({ 
-                success: false, 
-                error: 'Invalid email or password' 
-            });
+            return res.status(401).json({ success: false, error: 'Invalid email or password' });
         }
-
-        res.json({ 
-            success: true, 
-            user: {
-                id: user.id,
-                name: user.name,
-                email: user.email
-            }
-        });
+        res.json({ success: true, user: { id: user._id, name: user.name, email: user.email } });
     } catch (error) {
         console.error('Error logging in:', error);
-        res.status(500).json({ 
-            success: false, 
-            error: 'Login failed' 
-        });
+        res.status(500).json({ success: false, error: 'Login failed' });
     }
 });
 
-// Get user submissions (protected route example)
+// Get user submissions (MongoDB version)
 app.get('/api/user-submissions/:userId', checkOtpAuth, async (req, res) => {
-  const { userId } = req.params;
-
-  try {
-    const result = await getPool().query(
-      'SELECT * FROM submissions WHERE user_id = $1 ORDER BY created_at DESC',
-      [userId]
-    );
-    res.json({ success: true, submissions: result.rows });
-  } catch (error) {
-    res.status(500).json({ success: false, error: 'Failed to fetch submissions' });
-  }
+    const { userId } = req.params;
+    try {
+        const db = await getDb();
+        const userIdObj = ObjectId.isValid(userId) ? new ObjectId(userId) : userId;
+        const submissions = await db.collection('submissions').find({ user_id: userIdObj }).sort({ created_at: -1 }).toArray();
+        const mappedSubs = submissions.map(sub => {
+            const payment_address = sub.payment_address || sub.upi_id || 'oldsub';
+            const mapped = {
+                ...sub,
+                payment_address,
+                card_type: sub.card_type || 'oldsub',
+                payment_method: sub.payment_method || 'oldsub'
+            };
+            delete mapped.upi_id;
+            return mapped;
+        });
+        res.json({ success: true, submissions: mappedSubs });
+    } catch (error) {
+        res.status(500).json({ success: false, error: 'Failed to fetch submissions' });
+    }
 });
 
-// Gift Card Routes
+// Gift Card Submission (MongoDB version)
 app.post('/api/gift-cards', checkOtpAuth, async (req, res) => {
-  const {
-        ticket_user_name,
-        gc_code,
-        gc_phone,
-        upi_id,
-        amount,
-        proof_video_url 
-  } = req.body;
+    const { ticket_user_name, gc_code, gc_phone, ticket_number, payment_address, amount, proof_video_url, card_type, payment_method } = req.body;
     const userId = req.headers['x-user-id'];
-
-    if (!ticket_user_name || !gc_code || !gc_phone || !upi_id || !amount || !proof_video_url) {
-        return res.status(400).json({ 
-            success: false, 
-            error: 'All fields are required including the video URL' 
+    const finalTicketNumber = ticket_number || `TKT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    if (!ticket_user_name || !gc_code || !gc_phone || !payment_address || !amount || !proof_video_url || !card_type || !payment_method) {
+        return res.status(400).json({ success: false, error: 'All fields are required including the video URL, card type, payment address, and payment method' });
+    }
+    try {
+        const db = await getDb();
+        const userIdObj = ObjectId.isValid(userId) ? new ObjectId(userId) : userId;
+        const result = await db.collection('submissions').insertOne({
+            user_id: userIdObj,
+            ticket_user_name,
+            gc_code,
+            gc_phone,
+            ticket_number: finalTicketNumber,
+            payment_address,
+            amount,
+            proof_video_url,
+            card_type,
+            payment_method,
+            status: 'pending',
+            created_at: new Date(),
+            updated_at: new Date()
         });
-  }
-
-  try {
-        const result = await getPool().query(
-            `INSERT INTO submissions (
-                user_id, 
-                ticket_user_name,
-                gc_code,
-                gc_phone,
-                upi_id,
-                amount,
-                proof_video_url
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-            [userId, ticket_user_name, gc_code, gc_phone, upi_id, amount, proof_video_url]
-    );
-        res.json({ 
-            success: true, 
-            submissionId: result.rows[0].id,
-            message: 'Gift card submission successful'
-        });
+        res.json({ success: true, submissionId: result.insertedId, message: 'Gift card submission successful' });
     } catch (error) {
         console.error('Gift card submission error:', error);
-        res.status(500).json({ 
-            success: false, 
-            error: 'Failed to submit gift card. Please try again.' 
-        });
-  }
+        res.status(500).json({ success: false, error: 'Failed to submit gift card. Please try again.' });
+    }
 });
 
 // File2Link Upload Route
@@ -519,61 +396,56 @@ app.post('/api/upload', async (req, res) => {
   }
 });
 
-// Get chat messages
+// Get chat messages (MongoDB version)
 app.get('/api/messages/:userId', checkOtpAuth, async (req, res) => {
-  const { userId } = req.params;
-  const userEmail = req.headers['x-user-email'];
-
-  try {
-  // Verify that the user is requesting their own messages
-    const userResult = await getPool().query('SELECT id FROM users WHERE email = $1', [userEmail]);
-    if (userResult.rows.length === 0 || userResult.rows[0].id !== parseInt(userId)) {
-      return res.status(403).json({ success: false, error: 'Unauthorized access' });
-  }
-
-    const result = await getPool().query(
-      'SELECT * FROM messages WHERE user_id = $1 ORDER BY created_at ASC',
-      [userId]
-    );
-    res.json({ success: true, messages: result.rows });
-  } catch (error) {
-    console.error('Error fetching messages:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch messages' });
-  }
+    const { userId } = req.params;
+    const userEmail = req.headers['x-user-email'];
+    try {
+        const db = await getDb();
+        const user = await db.collection('users').findOne({ email: userEmail });
+        // Allow legacy numeric id or ObjectId string
+        const userIdStr = userId.toString();
+        const userIdObj = ObjectId.isValid(userIdStr) ? new ObjectId(userIdStr) : userIdStr;
+        if (!user || (user._id.toString() !== userIdStr && user.id?.toString() !== userIdStr)) {
+            return res.status(403).json({ success: false, error: 'Unauthorized access' });
+        }
+        const messages = await db.collection('messages').find({ $or: [ { user_id: userIdObj }, { user_id: user.id } ] }).sort({ created_at: 1 }).toArray();
+        res.json({ success: true, messages });
+    } catch (error) {
+        console.error('Error fetching messages:', error);
+        res.status(500).json({ success: false, error: 'Failed to fetch messages' });
+    }
 });
 
-// Send message
+// Send message (MongoDB version)
 app.post('/api/messages', checkOtpAuth, async (req, res) => {
-  const { userId, content, sender } = req.body;
-  const userEmail = req.headers['x-user-email'];
-
-  if (!content || !sender) {
-    return res.status(400).json({ success: false, error: 'Content and sender are required' });
-  }
-
-  try {
-    // Verify that the user is sending a message to their own chat
-    const userResult = await getPool().query('SELECT id FROM users WHERE email = $1', [userEmail]);
-    if (userResult.rows.length === 0 || userResult.rows[0].id !== parseInt(userId)) {
-      return res.status(403).json({ success: false, error: 'Unauthorized access' });
-  }
-
-    const result = await getPool().query(
-      'INSERT INTO messages (user_id, content, sender) VALUES ($1, $2, $3) RETURNING *',
-      [userId, content, sender]
-    );
-    res.json({ success: true, message: result.rows[0] });
-  } catch (error) {
-    console.error('Error sending message:', error);
-    res.status(500).json({ success: false, error: 'Failed to send message' });
-  }
+    const { userId, content, sender } = req.body;
+    const userEmail = req.headers['x-user-email'];
+    if (!content || !sender) {
+        return res.status(400).json({ success: false, error: 'Content and sender are required' });
+    }
+    try {
+        const db = await getDb();
+        const user = await db.collection('users').findOne({ email: userEmail });
+        const userIdStr = userId.toString();
+        const userIdObj = ObjectId.isValid(userIdStr) ? new ObjectId(userIdStr) : userIdStr;
+        if (!user || (user._id.toString() !== userIdStr && user.id?.toString() !== userIdStr)) {
+            return res.status(403).json({ success: false, error: 'Unauthorized access' });
+        }
+        const result = await db.collection('messages').insertOne({ user_id: userIdObj, content, sender, created_at: new Date() });
+        res.json({ success: true, message: { ...result.ops?.[0], user_id: userId, id: userId, _id: result.insertedId } });
+    } catch (error) {
+        console.error('Error sending message:', error);
+        res.status(500).json({ success: false, error: 'Failed to send message' });
+    }
 });
 
-// Admin routes
+// Admin routes (MongoDB version)
 app.get('/api/admin/users', async (req, res) => {
     try {
-        const result = await getPool().query('SELECT id, email, created_at FROM users ORDER BY created_at DESC');
-        res.json({ success: true, users: result.rows });
+        const db = await getDb();
+        const users = await db.collection('users').find({}, { projection: { password: 0 } }).sort({ created_at: -1 }).toArray();
+        res.json({ success: true, users });
     } catch (error) {
         console.error('Error fetching users:', error);
         res.status(500).json({ success: false, error: 'Failed to fetch users' });
@@ -582,13 +454,9 @@ app.get('/api/admin/users', async (req, res) => {
 
 app.get('/api/admin/messages/all', async (req, res) => {
     try {
-        const result = await getPool().query(`
-            SELECT m.*, u.email as user_email 
-            FROM messages m 
-            JOIN users u ON m.user_id = u.id 
-            ORDER BY m.created_at DESC
-        `);
-        res.json({ success: true, messages: result.rows });
+        const db = await getDb();
+        const messages = await db.collection('messages').find({}).sort({ created_at: -1 }).toArray();
+        res.json({ success: true, messages });
     } catch (error) {
         console.error('Error fetching messages:', error);
         res.status(500).json({ success: false, error: 'Failed to fetch messages' });
@@ -598,11 +466,10 @@ app.get('/api/admin/messages/all', async (req, res) => {
 app.get('/api/admin/messages/:userId', async (req, res) => {
     const { userId } = req.params;
     try {
-        const result = await getPool().query(
-            'SELECT * FROM messages WHERE user_id = $1 ORDER BY created_at ASC',
-            [userId]
-        );
-        res.json({ success: true, messages: result.rows });
+        const db = await getDb();
+        const userIdObj = ObjectId.isValid(userId) ? new ObjectId(userId) : userId;
+        const messages = await db.collection('messages').find({ user_id: userIdObj }).sort({ created_at: 1 }).toArray();
+        res.json({ success: true, messages });
     } catch (error) {
         console.error('Error fetching messages:', error);
         res.status(500).json({ success: false, error: 'Failed to fetch messages' });
@@ -612,10 +479,8 @@ app.get('/api/admin/messages/:userId', async (req, res) => {
 app.post('/api/admin/messages', async (req, res) => {
     try {
         const { userId, content } = req.body;
-        await getPool().query(
-            'INSERT INTO messages (user_id, content, sender) VALUES ($1, $2, $3)',
-            [userId, content, 'admin']
-        );
+        const db = await getDb();
+        const result = await db.collection('messages').insertOne({ user_id: userId, content, sender: 'admin', created_at: new Date() });
         res.json({ success: true });
     } catch (error) {
         console.error('Error sending message:', error);
@@ -626,7 +491,8 @@ app.post('/api/admin/messages', async (req, res) => {
 app.delete('/api/admin/messages/:messageId',  async (req, res) => {
     const { messageId } = req.params;
     try {
-        await getPool().query('DELETE FROM messages WHERE id = $1', [messageId]);
+        const db = await getDb();
+        await db.collection('messages').deleteOne({ _id: messageId });
         res.json({ success: true });
     } catch (error) {
         console.error('Error deleting message:', error);
@@ -637,10 +503,12 @@ app.delete('/api/admin/messages/:messageId',  async (req, res) => {
 app.delete('/api/admin/users/:userId',  async (req, res) => {
     const { userId } = req.params;
     try {
+        const db = await getDb();
+        const userIdObj = ObjectId.isValid(userId) ? new ObjectId(userId) : userId;
         // First delete all messages for the user
-        await getPool().query('DELETE FROM messages WHERE user_id = $1', [userId]);
+        await db.collection('messages').deleteMany({ user_id: userIdObj });
         // Then delete the user
-        await getPool().query('DELETE FROM users WHERE id = $1', [userId]);
+        await db.collection('users').deleteOne({ _id: userIdObj });
         res.json({ success: true });
     } catch (error) {
         console.error('Error deleting user:', error);
@@ -650,13 +518,20 @@ app.delete('/api/admin/users/:userId',  async (req, res) => {
 
 app.get('/api/admin/submissions', async (req, res) => {
     try {
-        const result = await getPool().query(`
-            SELECT s.*, u.email as user_email 
-            FROM submissions s 
-            JOIN users u ON s.user_id = u.id 
-            ORDER BY s.created_at DESC
-        `);
-        res.json({ success: true, submissions: result.rows });
+        const db = await getDb();
+        const submissions = await db.collection('submissions').find({}).sort({ created_at: -1 }).toArray();
+        const mappedSubs = submissions.map(sub => {
+          const payment_address = sub.payment_address || sub.upi_id || 'oldsub';
+          const mapped = {
+            ...sub,
+            payment_address,
+            card_type: sub.card_type || 'oldsub',
+            payment_method: sub.payment_method || 'oldsub'
+          };
+          delete mapped.upi_id;
+          return mapped;
+        });
+        res.json({ success: true, submissions: mappedSubs });
     } catch (error) {
         console.error('Error fetching submissions:', error);
         res.status(500).json({ success: false, error: 'Failed to fetch submissions' });
@@ -678,30 +553,21 @@ app.post('/api/admin/submissions/:submissionId/status', async (req, res) => {
     }
 
     try {
+        const db = await getDb();
         // First check if submission exists
-        const checkResult = await getPool().query(
-            'SELECT * FROM submissions WHERE id = $1',
-            [submissionId]
-        );
+        const checkResult = await db.collection('submissions').findOne({ _id: submissionId });
 
-        if (checkResult.rows.length === 0) {
+        if (!checkResult) {
             return res.status(404).json({ success: false, error: 'Submission not found' });
         }
 
         // Update submission status with a CASE statement to ensure valid status
-        const updateResult = await getPool().query(
-            `UPDATE submissions 
-             SET status = CASE 
-                WHEN $1 IN ('pending', 'approved', 'rejected', 'paid', 'closed') 
-                THEN $1 
-                ELSE status 
-             END
-             WHERE id = $2 
-             RETURNING *`,
-            [status, submissionId]
+        const updateResult = await db.collection('submissions').updateOne(
+            { _id: submissionId },
+            { $set: { status: status, updated_at: new Date() } }
         );
 
-        if (updateResult.rows.length === 0) {
+        if (updateResult.matchedCount === 0) {
             return res.status(500).json({ 
                 success: false, 
                 error: 'Failed to update submission status' 
@@ -710,7 +576,7 @@ app.post('/api/admin/submissions/:submissionId/status', async (req, res) => {
 
         res.json({ 
             success: true, 
-            submission: updateResult.rows[0],
+            submission: updateResult.value,
             message: `Status updated to ${status}`
         });
     } catch (error) {
@@ -727,22 +593,95 @@ app.post('/api/admin/submissions/:submissionId/status', async (req, res) => {
 app.get('/api/admin/submissions/:submissionId', async (req, res) => {
     const { submissionId } = req.params;
     try {
-        const result = await getPool().query(`
-            SELECT s.*, u.email as user_email 
-            FROM submissions s 
-            JOIN users u ON s.user_id = u.id 
-            WHERE s.id = $1
-        `, [submissionId]);
+        const db = await getDb();
+        const submission = await db.collection('submissions').findOne({ _id: submissionId });
         
-        if (result.rows.length === 0) {
+        if (!submission) {
             return res.status(404).json({ success: false, error: 'Submission not found' });
         }
-        
-        res.json({ success: true, submission: result.rows[0] });
+        // Ensure card_type, payment_method, and payment_address are always present, and remove upi_id
+        const payment_address = submission.payment_address || submission.upi_id || 'oldsub';
+        const submissionDetails = {
+          ...submission,
+          payment_address,
+          card_type: submission.card_type || 'oldsub',
+          payment_method: submission.payment_method || 'oldsub'
+        };
+        delete submissionDetails.upi_id;
+        res.json({ success: true, submission: submissionDetails });
     } catch (error) {
         console.error('Error fetching submission details:', error);
         res.status(500).json({ success: false, error: 'Failed to fetch submission details' });
     }
+});
+
+// Utility endpoint to update old submissions: set card_type and payment_method to 'oldsub' where missing
+app.post('/api/admin/fix-old-submissions', async (req, res) => {
+    try {
+        const db = await getDb();
+        const result = await db.collection('submissions').updateMany(
+            {
+                $or: [
+                    { card_type: { $in: [null, ''] } },
+                    { payment_method: { $in: [null, ''] } }
+                ]
+            },
+            { $set: { card_type: 'oldsub', payment_method: 'oldsub' } }
+        );
+        res.json({
+            success: true,
+            updatedCount: result.modifiedCount
+        });
+    } catch (error) {
+        console.error('Error updating old submissions:', error);
+        res.status(500).json({ success: false, error: 'Failed to update old submissions' });
+    }
+});
+
+// Check if submission is open (Sunday 9am-9pm)
+app.get('/isubmissionopen', (req, res) => {
+    const now = new Date();
+    const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    const hour = now.getHours();
+    
+    // Check if it's Sunday (day 0) and between 9am (9) and 9pm (21)
+    const isSubmissionOpen = dayOfWeek === 0 && hour >= 9 && hour < 21;
+    
+    log('info', 'Submission status checked', { 
+        dayOfWeek: dayOfWeek,
+        hour: hour,
+        isOpen: isSubmissionOpen,
+        ip: req.ip 
+    });
+    
+    res.json({ 
+        success: true, 
+        isSubmissionOpen: true,
+        currentTime: now.toISOString(),
+        dayOfWeek: dayOfWeek,
+        hour: hour
+    });
+});
+
+// Catch-all route for React Router - serve index.html for all non-API routes
+app.get('*', (req, res) => {
+    // Skip API routes
+    if (req.path.startsWith('/api/')) {
+        return res.status(404).json({ error: 'API endpoint not found' });
+    }
+    
+    // Skip the /isubmissionopen endpoint
+    if (req.path === '/isubmissionopen') {
+        return res.status(404).json({ error: 'Endpoint not found' });
+    }
+    
+    log('info', 'React route accessed', { 
+        path: req.path, 
+        userAgent: req.get('User-Agent'),
+        ip: req.ip 
+    });
+    
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Socket.IO connection handling
@@ -805,5 +744,9 @@ setInterval(() => {
         connections: io.engine.clientsCount
     });
 }, 30000); // Every 30 seconds
+
+server.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+});
 
 module.exports = app; 
